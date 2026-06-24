@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — Aléphia</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav>
+  <div class="nav-logo"><a href="/" style="display:flex;align-items:center;gap:12px;"><div class="nav-logo-circle">Alé</div><span class="nav-brand">ALEPHIA</span></a></div>
+  <div class="nav-links"><a href="/inscription.html" class="nav-fill">S'inscrire</a></div>
+</nav>
+
+<div class="container" style="max-width: 420px;">
+  <div class="card">
+    <h1 class="page-title">Connexion</h1>
+    <div id="alertBox"></div>
+    <form id="loginForm">
+      <div class="field"><label>Email</label><input type="email" id="email" required /></div>
+      <div class="field"><label>Mot de passe</label><input type="password" id="password" required /></div>
+      <button type="submit" class="btn-primary" style="width:100%; margin-top:8px;">Se connecter</button>
+    </form>
+    <p style="text-align:center; margin-top:16px; font-size:13px; color:var(--muted);">
+      Pas encore inscrit ? <a href="/inscription.html" style="color:var(--purple); font-weight:600;">Créer un compte</a>
+    </p>
+  </div>
+</div>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    window.location.href = "/espace.html";
+  } catch (err) {
+    document.getElementById("alertBox").innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+});
+</script>
+</body>
+</html>
