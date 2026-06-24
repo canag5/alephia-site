@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inscription — Aléphia</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav>
+  <div class="nav-logo"><a href="/" style="display:flex;align-items:center;gap:12px;"><div class="nav-logo-circle">Alé</div><span class="nav-brand">ALEPHIA</span></a></div>
+  <div class="nav-links"><a href="/connexion.html" class="nav-ghost">Connexion</a></div>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <h1 class="page-title">Inscription</h1>
+    <div id="alertBox"></div>
+
+    <form id="registerForm">
+      <div class="grid2">
+        <div class="field"><label>Nom</label><input type="text" id="name" required /></div>
+        <div class="field"><label>Email</label><input type="email" id="email" required /></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Mot de passe</label><input type="password" id="password" minlength="6" required /></div>
+        <div class="field"><label>Confirmer le mot de passe</label><input type="password" id="passwordConfirm" minlength="6" required /></div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Niveau</label>
+          <select id="level" required>
+            <option value="">-- Sélectionnez un niveau --</option>
+            <option>6ème</option><option>5ème</option><option>4ème</option><option>3ème</option>
+            <option>Seconde</option><option>Première</option><option>Terminale</option>
+          </select>
+        </div>
+        <div class="field"><label>Téléphone</label><input type="tel" id="phone" placeholder="0612345678" /></div>
+      </div>
+
+      <div class="field">
+        <label>Période souhaitée — cochez puis choisissez votre semaine</label>
+        <div id="periodList"></div>
+      </div>
+
+      <div class="field">
+        <label>Questions / Commentaires (optionnel)</label>
+        <textarea id="comments" rows="3"></textarea>
+      </div>
+
+      <button type="submit" class="btn-primary" id="submitBtn" style="width:100%; margin-top: 8px;">Soumettre le formulaire</button>
+    </form>
+  </div>
+</div>
+
+<footer>© 2026 Aléphia</footer>
+
+<script>
+let selectedWeekId = null;
+let periodsData = [];
+
+async function loadPeriods() {
+  const res = await fetch("/api/periods");
+  periodsData = await res.json();
+  const list = document.getElementById("periodList");
+  list.innerHTML = "";
+
+  periodsData.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "period-row";
+    row.id = "row-" + p.id;
+
+    const allDates = `${p.weeks[0].dates.split("–")[0].trim()} – ${p.weeks[p.weeks.length-1].dates.split("–")[1].trim()}`;
+
+    row.innerHTML = `
+      <div class="period-header" onclick="togglePeriod('${p.id}')">
+        <input type="checkbox" id="cb-${p.id}" onclick="event.stopPropagation(); togglePeriod('${p.id}')" />
+        <span class="period-name">${p.name}</span>
+        <span class="period-dates-hint">${allDates}</span>
+      </div>
+      <div class="week-picker" id="wp-${p.id}">
+        ${p.weeks.map(w => {
+          const remClass = w.remaining === 0 ? "rem-full" : w.remaining <= 3 ? "rem-low" : "rem-ok";
+          const remText = w.remaining === 0 ? "Complet" : `${w.remaining} places`;
+          return `<button type="button" class="week-btn" id="wk-${w.id}" ${w.remaining === 0 ? "disabled" : ""} onclick="selectWeek('${p.id}','${w.id}')">
+            ${w.label}<span class="week-label-sub">${w.dates}</span>
+            <span class="week-remaining ${remClass}">${remText}</span>
+          </button>`;
+        }).join("")}
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function togglePeriod(id) {
+  document.querySelectorAll(".period-row").forEach(r => {
+    if (r.id !== "row-" + id) {
+      r.classList.remove("active");
+      r.querySelector(".week-picker").classList.remove("visible");
+      r.querySelector('input[type=checkbox]').checked = false;
+    }
+  });
+  const cb = document.getElementById("cb-" + id);
+  const wp = document.getElementById("wp-" + id);
+  const row = document.getElementById("row-" + id);
+  cb.checked = !cb.checked;
+  if (cb.checked) { wp.classList.add("visible"); row.classList.add("active"); }
+  else { wp.classList.remove("visible"); row.classList.remove("active"); selectedWeekId = null; }
+}
+
+function selectWeek(periodId, weekId) {
+  document.querySelectorAll(".week-btn").forEach(b => b.classList.remove("selected"));
+  document.getElementById("wk-" + weekId).classList.add("selected");
+  selectedWeekId = weekId;
+}
+
+function showAlert(msg, type) {
+  document.getElementById("alertBox").innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const password = document.getElementById("password").value;
+  const passwordConfirm = document.getElementById("passwordConfirm").value;
+
+  if (password !== passwordConfirm) {
+    showAlert("Les mots de passe ne correspondent pas.", "error");
+    return;
+  }
+  if (!selectedWeekId) {
+    showAlert("Merci de choisir une semaine.", "error");
+    return;
+  }
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Envoi en cours...";
+
+  const payload = {
+    name: document.getElementById("name").value,
+    email: document.getElementById("email").value,
+    password,
+    level: document.getElementById("level").value,
+    phone: document.getElementById("phone").value,
+    weekId: selectedWeekId,
+    comments: document.getElementById("comments").value,
+  };
+
+  try {
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erreur lors de l'inscription.");
+    window.location.href = "/merci.html";
+  } catch (err) {
+    showAlert(err.message, "error");
+    btn.disabled = false;
+    btn.textContent = "Soumettre le formulaire";
+  }
+});
+
+loadPeriods();
+</script>
+</body>
+</html>
