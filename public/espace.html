@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon espace — Aléphia</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav>
+  <div class="nav-logo"><a href="/" style="display:flex;align-items:center;gap:12px;"><div class="nav-logo-circle">Alé</div><span class="nav-brand">ALEPHIA</span></a></div>
+  <div class="nav-links"><a href="#" id="logoutBtn" class="nav-ghost">Se déconnecter</a></div>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <h1 class="page-title">Mon espace</h1>
+    <div id="content">Chargement...</div>
+  </div>
+</div>
+
+<script>
+async function load() {
+  const res = await fetch("/api/me");
+  if (!res.ok) { window.location.href = "/connexion.html"; return; }
+  const data = await res.json();
+  const content = document.getElementById("content");
+  content.innerHTML = `
+    <p style="margin-bottom:20px;">Bonjour <strong>${data.user.name}</strong> !</p>
+    <h3 style="font-size:15px; margin-bottom:12px;">Mes inscriptions</h3>
+    ${data.registrations.length === 0
+      ? `<p style="color:var(--muted); font-size:14px;">Aucune inscription pour le moment. <a href="/inscription.html" style="color:var(--purple);">S'inscrire à un stage</a></p>`
+      : data.registrations.map(r => `
+        <div style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px;">
+          <strong>${r.level}</strong> — inscrit le ${new Date(r.createdAt).toLocaleDateString('fr-FR')}
+        </div>
+      `).join("")
+    }
+  `;
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+  e.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  window.location.href = "/";
+});
+
+load();
+</script>
+</body>
+</html>
